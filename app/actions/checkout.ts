@@ -9,6 +9,7 @@ import { getCartWithProducts, cartLineTotals } from "@/lib/cart-queries";
 import { computeTotals } from "@/lib/utils";
 import { getStripe } from "@/lib/stripe";
 import { logActivity } from "@/lib/activity";
+import { CURRENCY_CODE } from "@/lib/constants";
 
 export async function checkoutCODAction(formData: FormData) {
   const user = await requireUser();
@@ -112,7 +113,7 @@ export async function checkoutStripeAction(formData: FormData) {
     ...items.map((i) => ({
       quantity: i.quantity,
       price_data: {
-        currency: "usd" as const,
+        currency: CURRENCY_CODE,
         unit_amount: Math.round(Number(i.product.price) * 100),
         product_data: { name: i.product.name },
       },
@@ -122,7 +123,7 @@ export async function checkoutStripeAction(formData: FormData) {
           {
             quantity: 1,
             price_data: {
-              currency: "usd" as const,
+              currency: CURRENCY_CODE,
               unit_amount: Math.round(deliveryFee * 100),
               product_data: { name: "Delivery (5%)" },
             },
