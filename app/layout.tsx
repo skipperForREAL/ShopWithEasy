@@ -4,9 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { getCartItemCount } from "@/lib/cart-queries";
-import { syncAndGetUser } from "@/lib/auth-helpers";
-import { Role } from "@prisma/client";
+import { getLayoutData } from "@/lib/layout-data";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -17,9 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const user = await syncAndGetUser();
-  const cartCount = await getCartItemCount();
-  const isAdmin = user?.role === Role.ADMIN;
+  const { cartCount, isAdmin } = await getLayoutData();
 
   return (
     <html lang="en" suppressHydrationWarning>

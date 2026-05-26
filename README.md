@@ -9,7 +9,9 @@ npm install --legacy-peer-deps
 cp .env.example .env.local
 ```
 
-Fill in Clerk, `DATABASE_URL`, Supabase keys, and Stripe keys in `.env.local`.
+Fill in Clerk, Supabase keys, and Stripe keys in `.env.local`.
+
+**Database URLs (important):** Use Supabase’s **transaction pooler** for `DATABASE_URL` (host `*.pooler.supabase.com`, port **6543**, with `?pgbouncer=true&connection_limit=1`). Use the **direct** connection for `DIRECT_URL` (host `db.*.supabase.co`, port **5432**) for `prisma db push`. Session pooler (`pooler` host on port 5432) causes `max clients reached` errors in Next.js dev.
 
 ```bash
 npx prisma generate
