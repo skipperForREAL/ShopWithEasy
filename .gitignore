@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env
+.env*.local
+!.env.example
+*.tsbuildinfo
+.DS_Store
+npm-debug.log*
+.idea/
+.vscode/
+.cursor/

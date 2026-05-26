@@ -1,0 +1,169 @@
+// ShopWithEasy — Prisma schema for Supabase PostgreSQL
+// Run: npx prisma generate && npx prisma db push
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String
+  name      String?
+  image     String?
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+  reviews   Review[]
+  favorites Favorite[]
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  products    Product[]
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String      @db.Text
+  price       Decimal     @db.Decimal(10, 2)
+  quantity    Int
+  sizes       String[]
+  images      String[]
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  featured    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  reviews     Review[]
+  favorites   Favorite[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  ownerKey  String
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  size      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerKey, productId, size])
+  @@index([ownerKey])
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  userId           String
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status           OrderStatus @default(PENDING)
+  subtotal         Decimal     @db.Decimal(12, 2)
+  deliveryFee      Decimal     @db.Decimal(12, 2)
+  total            Decimal     @db.Decimal(12, 2)
+  shippingName     String
+  shippingEmail    String
+  shippingPhone    String
+  shippingAddress  String      @db.Text
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  items            OrderItem[]
+  payments         Payment[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  size      String?
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  orderId          String
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method           PaymentMethod
+  status           PaymentStatus @default(PENDING)
+  stripeSessionId  String?       @unique
+  stripePaymentId  String?
+  amount           Decimal       @db.Decimal(12, 2)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([productId, userId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  type      String
+  message   String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
