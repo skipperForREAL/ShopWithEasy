@@ -1,4 +1,5 @@
 export const GUEST_CART_COOKIE = "guest_cart_id";
+export const CART_COUNT_COOKIE = "cart_count";
 
 /** ISO 4217 code for Tanzanian Shilling (Stripe, payments) */
 export const CURRENCY_CODE = "tzs" as const;

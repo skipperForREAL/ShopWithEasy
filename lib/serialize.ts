@@ -1,4 +1,3 @@
-import type { Product, Review } from "@prisma/client";
 import type { Decimal } from "@prisma/client/runtime/library";
 
 /** Prisma Decimal is not serializable across the server/client boundary. */
@@ -16,9 +15,17 @@ export type ProductCardData = {
   reviews?: { rating: number }[];
 };
 
-export function serializeProduct(
-  product: Product & { reviews?: Pick<Review, "rating">[] },
-): ProductCardData {
+type ProductLike = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price: Decimal | number | string;
+  images: string[];
+  reviews?: { rating: number }[];
+};
+
+export function serializeProduct(product: ProductLike): ProductCardData {
   return {
     id: product.id,
     name: product.name,
@@ -31,7 +38,7 @@ export function serializeProduct(
 }
 
 export function serializeProducts(
-  products: (Product & { reviews?: Pick<Review, "rating">[] })[],
+  products: ProductLike[],
 ): ProductCardData[] {
   return products.map(serializeProduct);
 }

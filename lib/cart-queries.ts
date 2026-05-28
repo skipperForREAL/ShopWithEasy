@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { getCartOwnerKey } from "@/lib/cart-owner";
 import { computeTotals } from "@/lib/utils";
 import { Prisma } from "@prisma/client";
+import { cookies } from "next/headers";
+import { CART_COUNT_COOKIE } from "@/lib/constants";
 
 export async function getCartWithProducts() {
   const ownerKey = await getCartOwnerKey();
@@ -9,7 +11,7 @@ export async function getCartWithProducts() {
   try {
     const items = await prisma.cartItem.findMany({
       where: { ownerKey },
-      include: { product: { include: { category: true } } },
+      include: { product: true },
       orderBy: { updatedAt: "desc" },
     });
     return { ownerKey, items };
@@ -24,6 +26,16 @@ export async function getCartWithProducts() {
 export async function getCartItemCount() {
   const ownerKey = await getCartOwnerKey();
   if (!ownerKey) return 0;
+
+  if (ownerKey.startsWith("guest:")) {
+    const cookieStore = await cookies();
+    const cachedCount = cookieStore.get(CART_COUNT_COOKIE)?.value;
+    if (cachedCount) {
+      const parsed = Number(cachedCount);
+      if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+    }
+  }
+
   try {
     const agg = await prisma.cartItem.aggregate({
       where: { ownerKey },

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { serializeProducts, type ProductCardData } from "@/lib/serialize";
 import { Prisma } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 
 async function withMissingTableFallback<T>(query: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -14,7 +15,14 @@ async function withMissingTableFallback<T>(query: () => Promise<T>, fallback: T)
 }
 
 export async function getCategories() {
-  return withMissingTableFallback(() => prisma.category.findMany({ orderBy: { name: "asc" } }), []);
+  return withMissingTableFallback(
+    () =>
+      prisma.category.findMany({
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: "asc" },
+      }),
+    [],
+  );
 }
 
 export async function getProducts(input?: {
@@ -22,7 +30,10 @@ export async function getProducts(input?: {
   category?: string;
   minPrice?: number;
   maxPrice?: number;
-}): Promise<ProductCardData[]> {
+  cursor?: string;
+  take?: number;
+}): Promise<{ items: ProductCardData[]; nextCursor: string | null }> {
+  const take = Math.min(Math.max(input?.take ?? 12, 1), 30);
   return withMissingTableFallback(
     async () => {
       const products = await prisma.product.findMany({
@@ -45,26 +56,56 @@ export async function getProducts(input?: {
               }
             : {}),
         },
-        include: { category: true, reviews: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          price: true,
+          images: true,
+          reviews: { select: { rating: true }, take: 20 },
+        },
         orderBy: { createdAt: "desc" },
+        take: take + 1,
+        ...(input?.cursor ? { skip: 1, cursor: { id: input.cursor } } : {}),
       });
-      return serializeProducts(products);
+      const hasMore = products.length > take;
+      const page = hasMore ? products.slice(0, take) : products;
+      return {
+        items: serializeProducts(page),
+        nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+      };
     },
-    [],
+    { items: [], nextCursor: null },
   );
 }
 
 export async function getFeaturedProducts(): Promise<ProductCardData[]> {
-  return withMissingTableFallback(
-    async () => {
-      const products = await prisma.product.findMany({
-        where: { featured: true },
-        include: { category: true, reviews: true },
-        take: 8,
-        orderBy: { createdAt: "desc" },
-      });
-      return serializeProducts(products);
-    },
-    [],
+  const loadFeatured = unstable_cache(
+    async () =>
+      withMissingTableFallback(
+        async () => {
+          const products = await prisma.product.findMany({
+            where: { featured: true },
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              price: true,
+              images: true,
+              reviews: { select: { rating: true }, take: 20 },
+            },
+            take: 8,
+            orderBy: { createdAt: "desc" },
+          });
+          return serializeProducts(products);
+        },
+        [],
+      ),
+    ["featured-products"],
+    { revalidate: 60 },
   );
+
+  return loadFeatured();
 }
